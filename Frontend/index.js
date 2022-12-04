@@ -55,10 +55,40 @@ async function app() {
 
 async function predice() {
   img_ = document.getElementById('idImage');
+  console.log("predice()");
   if (img_.src != "") {
-    const result = await net.classify(img_);
-    drawStacked(result);
-    console.log(result);
+    let yourUrl = "http://127.0.0.1:8080/api/task";
+    fetch(yourUrl, {
+      method: 'POST',
+      headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ "id": 78912 })
+    })
+    .then(response => response.json())
+    .then(response => console.log(JSON.stringify(response)))
+    // var fd = new FormData();
+    // fd.append('image', img_ /*, optional filename */)
+
+    // var req = jQuery.ajax({
+    //   url: 'api/task', 
+    //   method: 'POST',
+    //   data: fd, // sends fields with filename mimetype etc
+    //   // data: aFiles[0], // optional just sends the binary
+    //   processData: false, // don't let jquery process the data
+    //   contentType: false // let xhr set the content type
+    // });
+
+    // // jQuery is promise A++ compatible and is the todays norms of doing things 
+    // req.then(function(response) {
+    //   console.log(response);
+    //   // drawStacked(response);
+    // }, function(xhr) {
+    //   console.error('failed to fetch xhr', xhr)
+    // })
+    // drawStacked(result);
+    // console.log(result);
   }
 }
 
