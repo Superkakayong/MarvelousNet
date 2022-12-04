@@ -9,6 +9,8 @@ import numpy as np
 import torch
 import torchvision
 
+from typing import *
+
 
 # load labels and GoogleNet
 def initialize_model():
@@ -27,7 +29,7 @@ def initialize_model():
 
 
 # Get full image message from manager
-def get_full_message(_manager_socket):
+def get_full_message(_manager_socket: socket) -> str:
     msg = ""
     while True:
         # Get the full message
@@ -47,7 +49,7 @@ def get_full_message(_manager_socket):
 
 
 # The image message decoder
-def decoder(image_message):
+def decoder(image_message: str):
     decoded_msg = image_message.split(" ", 3)
     """
     decoded_msg[0] - seqnum
@@ -94,6 +96,7 @@ model = None
 imagenet_label = None
 
 if len(argv) == 0:
+    # default value
     fail_pr = 0.0
 else:
     fail_pr = float(argv[0])
@@ -107,7 +110,7 @@ model, imagenet_label = initialize_model()
 host = argv[1]
 port = int(argv[2])
 
-manager_socket = socket.create_connection((host, port))
+manager_socket: socket = socket.create_connection((host, port))
 
 try:
     print(">>> Connected with manager: " + host + ":" + str(port))
