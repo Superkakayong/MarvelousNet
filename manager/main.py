@@ -20,16 +20,15 @@ FLICKR_ALPHABET = b'123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'
 # parse command line options before launching.
 parser = argparse.ArgumentParser(description='CS655 Image Recognition Daemon')
 parser.add_argument("total_img_num", type=int, help="Specify image numbers in total")
-parser.add_argument("required_workers_num", type=int, help="The number of workers")
 parser.add_argument("--hostname", "-i", type=str, default="0.0.0.0",
                     help="Setting the hostname running the server")
-parser.add_argument("--port", "-p", type=int, default=80, help="Setting the server port")
+parser.add_argument("--port", "-p", type=int, default=8080, help="Setting the server port")
 parser.add_argument("--debug", "-g", action="store_true", default=False,
                     help="Whether to use debug mode.")
 parser.add_argument("--dir-temp", dest="temp", type=str, default="temp", help="Store temporary files in a directory")
 
 command_line_args = parser.parse_args()
-# 运行后端服务器所需的变量
+
 backend_server_hostname = command_line_args.hostname
 backend_server_port = command_line_args.port
 backend_server_use_debug = command_line_args.debug
@@ -42,10 +41,6 @@ app.secret_key = os.urandom(16)
 socketio = SocketIO(app, cors_allowed_origins='*')
 
 total_img_num = command_line_args.total_img_num
-required_workers_num = command_line_args.required_workers_num  # set 1-5
-semaphore = Semaphore(required_workers_num)
-workers_limit = required_workers_num + 1
-conn_pool = []
 images = Queue(maxsize=20)
 idle_workers = Queue(maxsize=5)
 buffer_size = 1024
@@ -59,7 +54,8 @@ last_img_id = {
     2: ""
 }
 results = {"": ""}
-
+worker_port = 65534
+worker_socket = None
 
 def check_if_work():
     global images, idle_workers
@@ -103,7 +99,6 @@ def snd_rcv_img(img_id):
         workers_limit, idle_workers, last_img_id, results, \
         total_img_size, total_img_num, total_time
 
-    semaphore.acquire()
     _id = idle_workers.get()
     worker = conn_pool[_id]
     img_msg = get_image(img_id) + "\n"
@@ -153,7 +148,6 @@ def snd_rcv_img(img_id):
                 break
 
         idle_workers.put(_id)
-        semaphore.release()
 
     except Exception as e:
         print(e)
@@ -163,7 +157,6 @@ def snd_rcv_img(img_id):
             idle_workers.put(workers_limit - 1)
             print(">>> Start assigning works to Worker" + str(workers_limit))
             workers_limit += 1
-            semaphore.release()
         else:
             print(">>> There is no available worker anymore.")
 
@@ -188,88 +181,58 @@ class Timer(Process):
 
 
 def main():
-    global conn_pool, idle_workers, required_workers_num, images, start_time, img_num_count
+    global idle_workers, images, start_time, img_num_count, worker_socket
 
     # Build connection with workers
     manager_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    manager_socket2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    manager_socket3 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    manager_socket.bind(("10.10.1.1", 2888))
-    manager_socket2.bind(("10.10.2.1", 2889))
-    manager_socket3.bind(("10.10.3.1", 2890))
+    manager_socket.bind(("10.10.1.1", worker_port))
+    # manager_socket.bind(("localhost", worker_port))
 
     manager_socket.listen(5)
-    manager_socket2.listen(5)
-    manager_socket3.listen(5)
     print(">>> Manager starts. Connecting to workers...")
 
     i = 0
-    worker, addr = manager_socket.accept()
-    conn_pool.append(worker)
-    if i < required_workers_num:
-        idle_workers.put(i)
-    i += 1
-    print(">>> Connected to worker1")
-
-    worker2, addr2 = manager_socket2.accept()
-    conn_pool.append(worker2)
-    if i < required_workers_num:
-        idle_workers.put(i)
-    i += 1
-    print(">>> Connected to worker2")
-
-    worker3, addr3 = manager_socket3.accept()
-    conn_pool.append(worker3)
-    if i < required_workers_num:
-        idle_workers.put(i)
-    i += 1
-    print(">>> Connected to worker3")
-
-    print(">>> Connected with all 3 nodes")
-
+    worker_socket, _ = manager_socket.accept()
+    print(">>> Connected to worker")
 
 @app.route('/api/task', methods=["POST", "OPTIONS"])
 def handle_picture():
     global start_time
-
+    print("receive something")
     if request.method == 'POST':
-        # 读取 forms 中的 file 数据，并进行存储
-        if 'file' not in request.files:
-            return fail_result(ApiTaskFailNoFileField)
+        print(request.data)
+        # read file from form
+        # if 'file' not in request.files:
+        #     return fail_result(ApiTaskFailNoFileField)
 
-        file = request.files['file']
-        # 如果用户没有选择文件，浏览器将提交一个没有文件名的空 file。
-        if file.filename == "":
-            return fail_result(ApiTaskFailFileIsEmpty)
+        # file = request.files['file']
+        # # corner case: empty file
+        # if file.filename == "":
+        #     return fail_result(ApiTaskFailFileIsEmpty)
 
-        # 生成一个任务 id，供前端使用
-        uuid_byte = uuid.uuid4().bytes
-        short_uuid = b58encode(uuid_byte, FLICKR_ALPHABET)
-        str_uuid = short_uuid.decode()
+        # # uuid for frontend
+        # uuid_byte = uuid.uuid4().bytes
+        # short_uuid = b58encode(uuid_byte, FLICKR_ALPHABET)
+        # str_uuid = short_uuid.decode()
 
-        # 这一步要保存文件
-        file.save(get_temp_name(str_uuid))
+        # # cache the file
+        # file.save(get_temp_name(str_uuid))
 
-        # create new thread for the image
-        print(">>> Get one image: " + str_uuid)
-        if img_num_count == 0:
-            start_time = time.time()
-        worker_thread = Thread(target=snd_rcv_img, args=(str_uuid,))
-        worker_thread.setDaemon(True)
-        worker_thread.start()
+        # # create new thread for the image
+        # print(">>> Get one image: " + str_uuid)
+        # if img_num_count == 0:
+        #     start_time = time.time()
+        # worker_thread = Thread(target=snd_rcv_img, args=(str_uuid,))
+        # worker_thread.daemon = True
+        # worker_thread.start()
 
         # 最后，返回任务 id 给前端
-        return success_result(task_id=str_uuid)
+        return success_result(task_id="success")
+
 
     elif request.method == 'OPTIONS':
-        return """Usage:
-  Upload a new picture (to submit an image recognition task). Manager will return a task id from the front end.
-- METHOD: POST
-- Parameter Format: Form data/FILE
-- Return Format: JSON
-- Return Data: { "task_id": <task_id, type: string, format: base58 of an random generated uuid> }
-"""
+        return success_result(task_id="fail")
 
 
 def get_temp_name(filename: str):
@@ -291,7 +254,6 @@ def access_temp_img(task_id: str):
 def frontend(path: str):
     return app.send_static_file(path)
 
-
 @socketio.on('connect')
 def on_ws_connection():
     print("A client connected to ws.")
@@ -303,16 +265,11 @@ def test_disconnect():
 
 
 def run_backend_server():
-    main()
+    # main()
 
-    print(f"""Manager details:
-total_img_num: {total_img_num}
-required_workers_num: {required_workers_num}
-workers_limit: {workers_limit}
-""")
-    print(f"""Server run on {backend_server_hostname}:{
-    backend_server_port}{', as debug mode' if backend_server_use_debug else ''}""")
-    print(f"Directory used to store files is '{temp_image_dir}'")
+    # print(f"""Server run on {backend_server_hostname}:{
+    # backend_server_port}{', as debug mode' if backend_server_use_debug else ''}""")
+    # print(f"Directory used to store files is '{temp_image_dir}'")
 
     socketio.run(app, host=backend_server_hostname,
                  port=backend_server_port,

@@ -4,3 +4,5 @@
 static/
 temp/
 __pycache__/
+
+venv
