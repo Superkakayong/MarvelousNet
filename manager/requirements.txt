@@ -1,0 +1,7 @@
+Flask
+base58
+pillow
+numpy
+flask_socketio
+torch
+torchvision
