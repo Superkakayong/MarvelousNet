@@ -61,22 +61,54 @@ async function predice() {
 
 
   if (img_.src != "") {
-    // 
-    const imgBody = new FormData();
-    imgBody.append('file',file);
+    var formData = new FormData();
+    let file = document.querySelector('input[type=file]').files[0];
+    formData.append("image", file);
+
+    var content = '<a id="a"><b id="b">hey!</b></a>'; // 新文件的正文
+    var blob = new Blob([content], { type: "text/xml" });
+    formData.append("webmasterfile", blob);
+
+    var request = new XMLHttpRequest();
+    request.open("POST", "http://127.0.0.1:8080/api/task", false);
+    request.send(formData);
+    console.log(request.response);
+
+    // var response = new XMLHttpRequest();
+    // response.onreadystatechange = () => {
+    //   if (response.readyState === 4) {
+    //     callback(response.response);
+    //     console.log(response.response);
+    //   }
+    // }
+
+    // response.open('GET', "http://127.0.0.1:8080/api/task", true);
+    // console.log(response.response);
+    // response.send('');
+
+    // xhr.send(formData);
+
+    //   if (xhr.status != 200) {
+    //     console.log(`Error ${xhr.status}: ${xhr.statusText}`);
+    //   } else {
+    //     console.log(xhr.response);
+    //   }
 
 
-    let yourUrl = "http://127.0.0.1:8080/api/task";
-    fetch(yourUrl, {
-      method: 'POST',
-      headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'multipart/form-data'
-      },
-      body: imgBody
-    })
-    .then(response => response.json())
-    .then(response => console.log(JSON.stringify(response))) //may change
+    // let yourUrl = "http://127.0.0.1:8080/api/task";
+    // fetch(yourUrl, {
+    //   method: 'POST',
+    //   headers: {
+    //       'Accept': 'application/json',
+    //       'Content-Type': 'application/json'
+    //   },
+    //   body: JSON.stringify({ "id": 78912 })
+    // })
+    // .then(response => response.json())
+    // .then(response => console.log(JSON.stringify(response)))
+
+    // drawStacked(result);
+    // console.log(result);
   }
 
   //   var fd = new FormData();

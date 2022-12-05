@@ -214,10 +214,10 @@ def handle_picture():
         # 最后，返回任务 id 给前端
         # return success_result(task_id="success")
 
-        if 'file' not in request.files:
+        if 'image' not in request.files:
             return fail_result(ApiTaskFailNoFileField)
 
-        file = request.files['file']
+        file = request.files['image']
         # 如果用户没有选择文件，浏览器将提交一个没有文件名的空 file。
         if file.filename == "":
             return fail_result(ApiTaskFailFileIsEmpty)
