@@ -11,6 +11,7 @@ from PIL import Image
 from base58 import b58encode
 from flask import Flask, request, abort, send_file
 from flask_socketio import SocketIO
+from flask_cors import CORS
 
 from errors import ApiTaskFailNoFileField, ApiTaskFailFileIsEmpty
 from util import fail_result, success_result, ensure_path
@@ -19,13 +20,16 @@ FLICKR_ALPHABET = b'123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'
 
 # parse command line options before launching.
 parser = argparse.ArgumentParser(description='CS655 Image Recognition Daemon')
-parser.add_argument("total_img_num", type=int, help="Specify image numbers in total")
+parser.add_argument("total_img_num", type=int,
+                    help="Specify image numbers in total")
 parser.add_argument("--hostname", "-i", type=str, default="0.0.0.0",
                     help="Setting the hostname running the server")
-parser.add_argument("--port", "-p", type=int, default=8080, help="Setting the server port")
+parser.add_argument("--port", "-p", type=int, default=8080,
+                    help="Setting the server port")
 parser.add_argument("--debug", "-g", action="store_true", default=False,
                     help="Whether to use debug mode.")
-parser.add_argument("--dir-temp", dest="temp", type=str, default="temp", help="Store temporary files in a directory")
+parser.add_argument("--dir-temp", dest="temp", type=str,
+                    default="temp", help="Store temporary files in a directory")
 
 command_line_args = parser.parse_args()
 
@@ -35,6 +39,7 @@ backend_server_use_debug = command_line_args.debug
 temp_image_dir = command_line_args.temp
 
 app = Flask(__name__)
+CORS(app)
 # random choose a system generated number as secret key.
 app.secret_key = os.urandom(16)
 # update HTTP server to WebSocket server.
@@ -56,6 +61,7 @@ last_img_id = {
 results = {"": ""}
 worker_port = 65534
 worker_socket = None
+
 
 def check_if_work():
     global images, idle_workers
@@ -186,8 +192,8 @@ def main():
     # Build connection with workers
     manager_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    manager_socket.bind(("10.10.1.1", worker_port))
-    # manager_socket.bind(("localhost", worker_port))
+    # manager_socket.bind(("10.10.1.1", worker_port))
+    manager_socket.bind(("localhost", worker_port))
 
     manager_socket.listen(5)
     print(">>> Manager starts. Connecting to workers...")
@@ -196,43 +202,50 @@ def main():
     worker_socket, _ = manager_socket.accept()
     print(">>> Connected to worker")
 
+
 @app.route('/api/task', methods=["POST", "OPTIONS"])
 def handle_picture():
     global start_time
     print("receive something")
+
     if request.method == 'POST':
+        print(request.files)
         print(request.data)
-        # read file from form
-        # if 'file' not in request.files:
-        #     return fail_result(ApiTaskFailNoFileField)
+        # 最后，返回任务 id 给前端
+        # return success_result(task_id="success")
 
-        # file = request.files['file']
-        # # corner case: empty file
-        # if file.filename == "":
-        #     return fail_result(ApiTaskFailFileIsEmpty)
+        if 'file' not in request.files:
+            return fail_result(ApiTaskFailNoFileField)
 
-        # # uuid for frontend
-        # uuid_byte = uuid.uuid4().bytes
-        # short_uuid = b58encode(uuid_byte, FLICKR_ALPHABET)
-        # str_uuid = short_uuid.decode()
+        file = request.files['file']
+        # 如果用户没有选择文件，浏览器将提交一个没有文件名的空 file。
+        if file.filename == "":
+            return fail_result(ApiTaskFailFileIsEmpty)
 
-        # # cache the file
-        # file.save(get_temp_name(str_uuid))
+        # 生成一个任务 id，供前端使用
+        uuid_byte = uuid.uuid4().bytes
+        short_uuid = b58encode(uuid_byte, FLICKR_ALPHABET)
+        str_uuid = short_uuid.decode()
 
-        # # create new thread for the image
+        # 这一步要保存文件
+        file.save(get_temp_name(str_uuid))
+
+        # create new thread for the image
         # print(">>> Get one image: " + str_uuid)
         # if img_num_count == 0:
         #     start_time = time.time()
+
         # worker_thread = Thread(target=snd_rcv_img, args=(str_uuid,))
-        # worker_thread.daemon = True
+        # worker_thread.setDaemon(True)
         # worker_thread.start()
 
-        # 最后，返回任务 id 给前端
-        return success_result(task_id="success")
+        prediction = snd_rcv_img(str_uuid)
 
+        # 最后，返回任务 id 给前端
+        return success_result(result="porsche")
 
     elif request.method == 'OPTIONS':
-        return success_result(task_id="fail")
+        return success_result(result="fail")
 
 
 def get_temp_name(filename: str):
@@ -254,6 +267,7 @@ def access_temp_img(task_id: str):
 def frontend(path: str):
     return app.send_static_file(path)
 
+
 @socketio.on('connect')
 def on_ws_connection():
     print("A client connected to ws.")
@@ -265,7 +279,7 @@ def test_disconnect():
 
 
 def run_backend_server():
-    # main()
+    main()
 
     # print(f"""Server run on {backend_server_hostname}:{
     # backend_server_port}{', as debug mode' if backend_server_use_debug else ''}""")
