@@ -57,36 +57,52 @@ async function predice() {
   img_ = document.getElementById('idImage');
   console.log("predice()");
   if (img_.src != "") {
-    let yourUrl = "http://127.0.0.1:8080/api/task";
-    fetch(yourUrl, {
-      method: 'POST',
-      headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ "id": 78912 })
-    })
-    .then(response => response.json())
-    .then(response => console.log(JSON.stringify(response)))
-    // var fd = new FormData();
-    // fd.append('image', img_ /*, optional filename */)
+    var formData = new FormData();
+    let file = document.querySelector('input[type=file]').files[0];
+    formData.append("image", file);
 
-    // var req = jQuery.ajax({
-    //   url: 'api/task', 
+    var content = '<a id="a"><b id="b">hey!</b></a>'; // 新文件的正文
+    var blob = new Blob([content], { type: "text/xml" });
+    formData.append("webmasterfile", blob);
+
+    var request = new XMLHttpRequest();
+    request.open("POST", "http://127.0.0.1:8080/api/task", false);
+    request.send(formData);
+    console.log(request.response);
+
+    // var response = new XMLHttpRequest();
+    // response.onreadystatechange = () => {
+    //   if (response.readyState === 4) {
+    //     callback(response.response);
+    //     console.log(response.response);
+    //   }
+    // }
+
+    // response.open('GET', "http://127.0.0.1:8080/api/task", true);
+    // console.log(response.response);
+    // response.send('');
+
+    // xhr.send(formData);
+
+    //   if (xhr.status != 200) {
+    //     console.log(`Error ${xhr.status}: ${xhr.statusText}`);
+    //   } else {
+    //     console.log(xhr.response);
+    //   }
+
+
+    // let yourUrl = "http://127.0.0.1:8080/api/task";
+    // fetch(yourUrl, {
     //   method: 'POST',
-    //   data: fd, // sends fields with filename mimetype etc
-    //   // data: aFiles[0], // optional just sends the binary
-    //   processData: false, // don't let jquery process the data
-    //   contentType: false // let xhr set the content type
-    // });
-
-    // // jQuery is promise A++ compatible and is the todays norms of doing things 
-    // req.then(function(response) {
-    //   console.log(response);
-    //   // drawStacked(response);
-    // }, function(xhr) {
-    //   console.error('failed to fetch xhr', xhr)
+    //   headers: {
+    //       'Accept': 'application/json',
+    //       'Content-Type': 'application/json'
+    //   },
+    //   body: JSON.stringify({ "id": 78912 })
     // })
+    // .then(response => response.json())
+    // .then(response => console.log(JSON.stringify(response)))
+
     // drawStacked(result);
     // console.log(result);
   }
