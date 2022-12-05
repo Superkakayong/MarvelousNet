@@ -1,6 +1,7 @@
 let net = null;
 
 
+
 function showFiles() {
   // An empty img element
   let demoImage = document.getElementById('idImage');
@@ -55,41 +56,51 @@ async function app() {
 
 async function predice() {
   img_ = document.getElementById('idImage');
+  file = document.querySelector('input[type=file]').files[0];
   console.log("predice()");
+
+
   if (img_.src != "") {
+    // 
+    const imgBody = new FormData();
+    imgBody.append('file',file);
+
+
     let yourUrl = "http://127.0.0.1:8080/api/task";
     fetch(yourUrl, {
       method: 'POST',
       headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'multipart/form-data'
       },
-      body: JSON.stringify({ "id": 78912 })
+      body: imgBody
     })
     .then(response => response.json())
-    .then(response => console.log(JSON.stringify(response)))
-    // var fd = new FormData();
-    // fd.append('image', img_ /*, optional filename */)
-
-    // var req = jQuery.ajax({
-    //   url: 'api/task', 
-    //   method: 'POST',
-    //   data: fd, // sends fields with filename mimetype etc
-    //   // data: aFiles[0], // optional just sends the binary
-    //   processData: false, // don't let jquery process the data
-    //   contentType: false // let xhr set the content type
-    // });
-
-    // // jQuery is promise A++ compatible and is the todays norms of doing things 
-    // req.then(function(response) {
-    //   console.log(response);
-    //   // drawStacked(response);
-    // }, function(xhr) {
-    //   console.error('failed to fetch xhr', xhr)
-    // })
-    // drawStacked(result);
-    // console.log(result);
+    .then(response => console.log(JSON.stringify(response))) //may change
   }
+
+  //   var fd = new FormData();
+  //   fd.append('image', img_ /*, optional filename */)
+
+  //   var req = jQuery.ajax({
+  //     url: 'api/task', 
+  //     method: 'POST',
+  //     data: fd, // sends fields with filename mimetype etc
+  //     // data: aFiles[0], // optional just sends the binary
+  //     processData: false, // don't let jquery process the data
+  //     contentType: false // let xhr set the content type
+  //   });
+
+  //   // jQuery is promise A++ compatible and is the todays norms of doing things 
+  //   req.then(function(response) {
+  //     console.log(response);
+  //     // drawStacked(response);
+  //   }, function(xhr) {
+  //     console.error('failed to fetch xhr', xhr)
+  //   })
+  //   drawStacked(result);
+  //   console.log(result);
+  // }
 }
 
 app();

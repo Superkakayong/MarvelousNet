@@ -200,24 +200,30 @@ def main():
 def handle_picture():
     global start_time
     print("receive something")
+    print(request.method)
     if request.method == 'POST':
-        print(request.data)
+        # print(request.data)
         # read file from form
-        # if 'file' not in request.files:
-        #     return fail_result(ApiTaskFailNoFileField)
+        # print(request.form)
+        print(request.form['image'])
 
-        # file = request.files['file']
-        # # corner case: empty file
-        # if file.filename == "":
-        #     return fail_result(ApiTaskFailFileIsEmpty)
+        if 'image' not in request.files:
+            print("shit")
+            return fail_result(ApiTaskFailNoFileField)
+        print("yes")
+        print(request.files)
+        file = request.files['image']
+        # corner case: empty file
+        if file.filename == "":
+            return fail_result(ApiTaskFailFileIsEmpty)
 
-        # # uuid for frontend
-        # uuid_byte = uuid.uuid4().bytes
-        # short_uuid = b58encode(uuid_byte, FLICKR_ALPHABET)
-        # str_uuid = short_uuid.decode()
+        # uuid for frontend
+        uuid_byte = uuid.uuid4().bytes
+        short_uuid = b58encode(uuid_byte, FLICKR_ALPHABET)
+        str_uuid = short_uuid.decode()
 
-        # # cache the file
-        # file.save(get_temp_name(str_uuid))
+        # cache the file
+        file.save(get_temp_name(str_uuid))
 
         # # create new thread for the image
         # print(">>> Get one image: " + str_uuid)
