@@ -20,8 +20,6 @@ FLICKR_ALPHABET = b'123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'
 
 # parse command line options before launching.
 parser = argparse.ArgumentParser(description='CS655 Image Recognition Daemon')
-parser.add_argument("total_img_num", type=int,
-                    help="Specify image numbers in total")
 parser.add_argument("--hostname", "-i", type=str, default="0.0.0.0",
                     help="Setting the hostname running the server")
 parser.add_argument("--port", "-p", type=int, default=8080,
@@ -45,31 +43,13 @@ app.secret_key = os.urandom(16)
 # update HTTP server to WebSocket server.
 socketio = SocketIO(app, cors_allowed_origins='*')
 
-total_img_num = command_line_args.total_img_num
-images = Queue(maxsize=20)
-idle_workers = Queue(maxsize=5)
 buffer_size = 1024
-img_num_count = 0
 total_img_size = 0  # bit
 start_time = 0.0
 total_time = 0.0  # second
-last_img_id = {
-    0: "",
-    1: "",
-    2: ""
-}
 results = {"": ""}
 worker_port = 65534
 worker_socket = None
-
-
-def check_if_work():
-    global images, idle_workers
-    if (not images.empty()) and (not idle_workers.empty()):
-        return True
-    else:
-        return False
-
 
 def get_image(image_id):
     img = Image.open(os.path.join(temp_image_dir, image_id)).convert('RGB')
@@ -93,7 +73,6 @@ def collect_image_result(msg):
 def output_statistics():
     global total_img_size, total_time
     print("---------------- statistics -------------------")
-    print(results)
     print("Total Image Size: " + str(total_img_size) + "bits")
     print("Total Time: " + str(total_time) + "seconds")
     throughput = total_img_size / total_time
@@ -101,79 +80,49 @@ def output_statistics():
 
 
 def snd_rcv_img(img_id):
-    global start_time, img_num_count, images, conn_pool, \
-        workers_limit, idle_workers, last_img_id, results, \
-        total_img_size, total_img_num, total_time
+    global start_time, results, total_img_size, total_time
 
-    _id = idle_workers.get()
-    worker = conn_pool[_id]
     img_msg = get_image(img_id) + "\n"
-
     try:
 
         while True:
-            worker.send(img_msg.encode("utf-8"))
-            print(">>> Send one image to worker" + str(_id + 1))
+            worker_socket.send(img_msg.encode("utf-8"))
+            print(">>> Send one image to worker")
             print(time.time())
-            timer = Timer(20, worker, _id, img_msg)
+            timer = Timer(20, worker_socket, img_msg)
             timer.start()
             msg = ""
 
             while True:
-                feedback = worker.recv(buffer_size)
+                feedback = worker_socket.recv(buffer_size)
                 msg += feedback.decode("utf-8")
                 if msg[-1] == '\n':
                     timer.cancel()
                     break
 
             if msg == "404\n":
-                print(">>> Detected disconnection with Worker" + str(_id + 1))
+                print(">>> Detected disconnection with Worker")
                 timer.cancel()
-                images.put(img_id)
                 raise Exception
             print(">>> Receive from the server: " + msg)
             print(time.time())
-            this_img_id, this_result = collect_image_result(msg)
-
-            if this_img_id == last_img_id[_id]:
-                continue
-            else:
-                last_img_id[_id] = this_img_id
-                results[this_img_id] = this_result
-                socketio.emit("result", {
-                    "task_id": this_img_id,
-                    "result": this_result,
-                })
-                total_img_size += len(img_msg.encode("utf-8")) * 8
-                img_num_count += 1
-
-                if img_num_count == total_img_num:
-                    total_time = time.time() - start_time
-                    output_statistics()
-                    img_num_count = 0
-                break
-
-        idle_workers.put(_id)
+            _, this_result = collect_image_result(msg)
+            
+            total_img_size += len(img_msg.encode("utf-8")) * 8
+            total_time = time.time() - start_time
+            output_statistics()
+            return this_result
 
     except Exception as e:
         print(e)
-        # Handle if one worker failed
-        conn_pool[_id].close()
-        if workers_limit < 4:  # set 5
-            idle_workers.put(workers_limit - 1)
-            print(">>> Start assigning works to Worker" + str(workers_limit))
-            workers_limit += 1
-        else:
-            print(">>> There is no available worker anymore.")
 
 
 # Timer Class
 class Timer(Process):
-    def __init__(self, interval, worker, _id, img_msg):
+    def __init__(self, interval, worker, img_msg):
         super(Timer, self).__init__()
         self.interval = interval
         self.worker = worker
-        self.id = _id
         self.img_msg = img_msg
         self.finished = Event()
 
@@ -183,11 +132,11 @@ class Timer(Process):
     def run(self) -> None:
         while not self.finished.wait(self.interval):
             self.worker.send(self.img_msg.encode("utf-8"))
-            print(">>> Timeout! Send the image again to worker" + str(self.id + 1))
+            print(">>> Timeout! Send the image again to worker")
 
 
 def main():
-    global idle_workers, images, start_time, img_num_count, worker_socket
+    global start_time, img_num_count, worker_socket
 
     # Build connection with workers
     manager_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -195,10 +144,9 @@ def main():
     # manager_socket.bind(("10.10.1.1", worker_port))
     manager_socket.bind(("localhost", worker_port))
 
-    manager_socket.listen(5)
+    manager_socket.listen()
     print(">>> Manager starts. Connecting to workers...")
 
-    i = 0
     worker_socket, _ = manager_socket.accept()
     print(">>> Connected to worker")
 
@@ -210,9 +158,6 @@ def handle_picture():
 
     if request.method == 'POST':
         print(request.files)
-        print(request.data)
-        # 最后，返回任务 id 给前端
-        # return success_result(task_id="success")
 
         if 'image' not in request.files:
             return fail_result(ApiTaskFailNoFileField)
@@ -230,19 +175,10 @@ def handle_picture():
         # 这一步要保存文件
         file.save(get_temp_name(str_uuid))
 
-        # create new thread for the image
-        # print(">>> Get one image: " + str_uuid)
-        # if img_num_count == 0:
-        #     start_time = time.time()
-
-        # worker_thread = Thread(target=snd_rcv_img, args=(str_uuid,))
-        # worker_thread.setDaemon(True)
-        # worker_thread.start()
-
         prediction = snd_rcv_img(str_uuid)
 
         # 最后，返回任务 id 给前端
-        return success_result(result="porsche")
+        return success_result(result=prediction)
 
     elif request.method == 'OPTIONS':
         return success_result(result="fail")
@@ -262,7 +198,7 @@ def access_temp_img(task_id: str):
         abort(404)
 
 
-@app.route('/', defaults={'path': 'index.html'})
+@app.route('/', defaults={'path': 'index.html'}, methods=["GET"])
 @app.route('/<path:path>', methods=["GET"])
 def frontend(path: str):
     return app.send_static_file(path)
@@ -280,10 +216,6 @@ def test_disconnect():
 
 def run_backend_server():
     main()
-
-    # print(f"""Server run on {backend_server_hostname}:{
-    # backend_server_port}{', as debug mode' if backend_server_use_debug else ''}""")
-    # print(f"Directory used to store files is '{temp_image_dir}'")
 
     socketio.run(app, host=backend_server_hostname,
                  port=backend_server_port,
