@@ -239,7 +239,7 @@ def handle_picture():
         # worker_thread.setDaemon(True)
         # worker_thread.start()
 
-        prediction = snd_rcv_img(str_uuid)
+        # prediction = snd_rcv_img(str_uuid)
 
         # 最后，返回任务 id 给前端
         return success_result(result="porsche")
