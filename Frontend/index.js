@@ -30,7 +30,7 @@ async function predice() {
     formData.append("image", file);
 
     var request = new XMLHttpRequest();
-    request.open("POST", "http://127.0.0.1:8080/api/task", false);
+    request.open("POST", "api/task", false);
     request.send(formData);
     result = request.response
     console.log(result);
