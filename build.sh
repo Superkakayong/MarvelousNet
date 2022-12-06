@@ -6,9 +6,9 @@ if [ -d "$target_path" ]; then
   echo -e "\e[33mClearing previous target directory $target_path...\e[0m"
   rm -r $target_path
 fi
+mkdir $target_path
 
 cd Frontend
-
 cp index.html $target_path
 cp index.js $target_path
 touch $target_path/.gitkeep
