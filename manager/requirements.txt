@@ -5,3 +5,4 @@ numpy
 flask_socketio
 torch
 torchvision
+Flask-Cors
