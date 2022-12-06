@@ -21,7 +21,9 @@ def initialize_model():
 
     # import model
     print(">>> Loading GoogleNet..")
-    _model = torchvision.models.googlenet(pretrained=True)
+    # _model = torchvision.models.googlenet(pretrained=True)
+    _model = torchvision.models.googlenet(pretrained=False)
+    _model.load_state_dict(torch.load('./googlenet-1378be20.pth'))
     _model.eval()
     print(">>> Finished.")
 
@@ -108,7 +110,9 @@ model, imagenet_label = initialize_model()
 
 # set host name and port number
 host = argv[1]
-port = int(argv[2])
+# port = int(argv[2])
+# host = "127.0.0.1"
+port = 65534
 
 manager_socket: socket = socket.create_connection((host, port))
 
@@ -134,14 +138,6 @@ try:
         if seqnum != last_seqnum:
             last_result = image_recognition(image)
             last_seqnum = seqnum
-
-        while True:
-
-            # the response time of worker >= 5
-            if (time.time() - start_time) < 5:
-                continue
-            else:
-                break
 
         print(">>> Send the image recognition result back\n")
         print(time.time())
