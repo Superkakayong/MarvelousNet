@@ -10,3 +10,5 @@
 ## 6. 怎么部署到 GENI 上 ALL IN -> 搞清楚实操步骤 (maybe a small demo)
 
 # Meeting 2 (Nov 30 2022 After 8PM)
+
+[![preview](README.sources/preview.png)](https://drive.google.com/file/d/1IKpR6r3nQ2MJrzjYgmSrdCZ8EPD-4j5E/view?usp=share_link)
