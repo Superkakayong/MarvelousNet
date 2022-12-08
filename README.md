@@ -98,7 +98,7 @@ Communication protocol and assignment system
 1. Operation Video: 
 [![preview](README.sources/preview.png)](https://drive.google.com/file/d/1IKpR6r3nQ2MJrzjYgmSrdCZ8EPD-4j5E/view?usp=share_link)
 
-2. You can login to our project directly using the server URL (http://128.95.190.58/8080), as we use TMUX to run our project on GENI continuously.
+2. You can login to our project directly using the server URL (http://128.95.190.55/8080), as we use TMUX to run our project on GENI continuously.
 
 3. We provide a sample image ([`download.jpg`](./download.jpg)) for you to test.
 
