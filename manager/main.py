@@ -141,8 +141,7 @@ def main():
     # Build connection with workers
     manager_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    # manager_socket.bind(("10.10.1.1", worker_port))
-    manager_socket.bind(("localhost", worker_port))
+    manager_socket.bind(("10.10.1.1", worker_port))
 
     manager_socket.listen()
     print(">>> Manager starts. Connecting to workers...")
@@ -219,7 +218,9 @@ def run_backend_server():
 
     socketio.run(app, host=backend_server_hostname,
                  port=backend_server_port,
-                 debug=backend_server_use_debug, use_reloader=False)
+                 debug=backend_server_use_debug, 
+                 use_reloader=False,
+                 allow_unsafe_werkzeug=True)
 
 
 if __name__ == '__main__':
